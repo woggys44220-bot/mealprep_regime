@@ -15,6 +15,13 @@ Application locale Python (Streamlit) pour gérer des recettes de régime, calcu
 - Modifier ou supprimer une recette
 - Générer une liste de courses simple (agrégation des ingrédients)
 - Export CSV des recettes et de la liste de courses
+- Planifier une semaine complète (7 jours) avec 4 repas par jour
+- Sélectionner une recette par repas et le nombre de portions consommées
+- Calcul automatique des calories/macros par jour et sur toute la semaine
+- Sauvegarde du planning en JSON (`data/meal_plan.json`)
+- Réinitialisation du planning hebdomadaire
+- Génération d’une liste de courses hebdomadaire depuis le planning
+- Export CSV du planning semaine
 
 ## Nouveauté : base d'aliments préenregistrés
 
@@ -66,6 +73,7 @@ Les conversions pratiques demandées (ex. `1 pièce`, `1 poignée`, `1 c. à sou
 - `app.py`
 - `data/recipes.json`
 - `data/foods.json`
+- `data/meal_plan.json`
 - `requirements.txt`
 - `README.md`
 
@@ -120,11 +128,18 @@ Ensuite, ouvre l'URL affichée dans le terminal (souvent `http://localhost:8501`
    - laisse `Auto` activé pour calculer calories/macros automatiquement en `g`/`kg`.
 3. Sauvegarde la recette.
 4. Onglet **Recettes** > section **Base d'aliments** : ajoute/modifie/supprime les aliments de référence.
-5. Onglet **Meal Prep** : sélectionne des recettes pour générer la liste de courses.
-6. Onglet **Exports CSV** : exporte les recettes ou la liste de courses.
+5. Onglet **Meal Prep** : sélectionne des recettes pour générer une liste de courses rapide.
+6. Onglet **Planning semaine** :
+   - planifie du lundi au dimanche,
+   - choisis **Petit-déjeuner / Déjeuner / Dîner / Collation**,
+   - choisis la recette et les portions consommées,
+   - consulte les totaux par jour + total semaine,
+   - génère la liste de courses totale de la semaine,
+   - exporte le planning en CSV.
+7. Onglet **Exports CSV** : exporte les recettes ou la liste de courses globale des recettes.
 
 ## Notes
 
 - L'application fonctionne **sans internet** une fois les dépendances installées.
-- Toutes les données sont stockées localement dans `data/recipes.json` et `data/foods.json`.
+- Toutes les données sont stockées localement dans `data/recipes.json`, `data/foods.json` et `data/meal_plan.json`.
 - Aucun compte utilisateur, aucune clé API.
