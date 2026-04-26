@@ -53,6 +53,26 @@ def load_recipes() -> List[Dict]:
         return []
 
 
+def normalize_recipes_for_storage(recipes: List[Dict]) -> tuple[List[Dict], bool]:
+    normalized: List[Dict] = []
+    changed = False
+    for recipe in recipes:
+        recipe_copy = dict(recipe)
+        ingredients = []
+        for ingredient in recipe_copy.get("ingredients", []):
+            ing = dict(ingredient)
+            clean_food = normalize_text(ing.get("food"))
+            clean_name = resolve_ingredient_name(ing)
+            if ing.get("food") != clean_food or ing.get("name") != clean_name:
+                changed = True
+            ing["food"] = clean_food
+            ing["name"] = clean_name
+            ingredients.append(ing)
+        recipe_copy["ingredients"] = ingredients
+        normalized.append(recipe_copy)
+    return normalized, changed
+
+
 def save_recipes(recipes: List[Dict]) -> None:
     RECIPES_FILE.write_text(json.dumps(recipes, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -95,9 +115,22 @@ def safe_float(value: object, default: float = 0.0) -> float:
     return number
 
 
+def normalize_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float) and math.isnan(value):
+        return ""
+    text = str(value).strip()
+    return "" if text.lower() in {"", "none", "nan"} else text
+
+
+def resolve_ingredient_name(ingredient: Dict) -> str:
+    return normalize_text(ingredient.get("name")) or normalize_text(ingredient.get("food"))
+
+
 def compute_ingredient_macros(ingredient: Dict, foods_map: Dict[str, Dict]) -> Dict:
     ing = dict(ingredient)
-    food_name = str(ing.get("food", "")).strip()
+    food_name = normalize_text(ing.get("food"))
     auto = bool(ing.get("auto", True))
     quantity = safe_float(ing.get("quantity", 0), 0.0)
     unit = str(ing.get("unit", "g"))
@@ -106,7 +139,7 @@ def compute_ingredient_macros(ingredient: Dict, foods_map: Dict[str, Dict]) -> D
     if auto and food_name and grams is not None and food_name in foods_map:
         factor = grams / 100.0
         food = foods_map[food_name]
-        if not str(ing.get("name", "")).strip():
+        if not normalize_text(ing.get("name")):
             ing["name"] = food_name
         ing["calories"] = round(safe_float(food.get("calories", 0), 0.0) * factor, 2)
         ing["proteines"] = round(safe_float(food.get("proteines", 0), 0.0) * factor, 2)
@@ -117,8 +150,8 @@ def compute_ingredient_macros(ingredient: Dict, foods_map: Dict[str, Dict]) -> D
 
 
 def validate_ingredient_row(ingredient: Dict, foods_map: Dict[str, Dict], row_index: int) -> Optional[str]:
-    food_name = str(ingredient.get("food", "")).strip()
-    display_name = str(ingredient.get("name", "")).strip()
+    food_name = normalize_text(ingredient.get("food"))
+    display_name = normalize_text(ingredient.get("name"))
     auto = bool(ingredient.get("auto", True))
     unit = str(ingredient.get("unit", "g"))
     grams = quantity_to_grams(safe_float(ingredient.get("quantity", 0), 0.0), unit)
@@ -136,8 +169,8 @@ def sanitize_ingredients(raw_ingredients: List[Dict], foods_map: Dict[str, Dict]
     clean_ingredients = []
     for ing in raw_ingredients:
         computed = compute_ingredient_macros(ing, foods_map)
-        food_name = str(computed.get("food", "")).strip()
-        display_name = str(computed.get("name", "")).strip() or food_name
+        food_name = normalize_text(computed.get("food"))
+        display_name = resolve_ingredient_name(computed)
         if not display_name:
             continue
         clean_ingredients.append(
@@ -185,7 +218,7 @@ def build_shopping_list(selected_recipes: List[Dict]) -> Dict[str, Dict[str, flo
     shopping: Dict[str, Dict[str, float]] = {}
     for recipe in selected_recipes:
         for ing in recipe.get("ingredients", []):
-            name = ing.get("name", "").strip()
+            name = resolve_ingredient_name(ing)
             unit = ing.get("unit", "")
             qty = float(ing.get("quantity", 0) or 0)
             if not name:
@@ -207,7 +240,7 @@ def recipes_to_csv_rows(recipes: List[Dict]) -> List[List[str]]:
             rows.append([
                 recipe.get("name", ""),
                 str(recipe.get("portions", 1)),
-                ing.get("name", ""),
+                resolve_ingredient_name(ing),
                 str(ing.get("quantity", "")),
                 ing.get("unit", ""),
                 str(ing.get("calories", "")),
@@ -236,9 +269,9 @@ def rows_to_csv_bytes(rows: List[List[str]]) -> bytes:
 
 def normalize_ingredient_for_editor(ingredient: Dict) -> Dict:
     row = dict(ingredient)
-    row.setdefault("food", row.get("name", ""))
+    row.setdefault("food", normalize_text(row.get("name")))
     row.setdefault("auto", True)
-    row.setdefault("name", "")
+    row["name"] = resolve_ingredient_name(row)
     row.setdefault("quantity", 0.0)
     row.setdefault("unit", "g")
     row.setdefault("calories", 0.0)
@@ -270,6 +303,9 @@ def main() -> None:
     foods_map = {str(food.get("name", "")).strip(): food for food in foods if str(food.get("name", "")).strip()}
 
     recipes = load_recipes()
+    recipes, recipes_normalized = normalize_recipes_for_storage(recipes)
+    if recipes_normalized:
+        save_recipes(recipes)
     recipe_names = [r.get("name") for r in recipes]
 
     tab1, tab2, tab3 = st.tabs(["Recettes", "Meal Prep", "Exports CSV"])
@@ -409,7 +445,12 @@ def main() -> None:
                         f"Glucides/portion: **{totals['glucides_par_portion']:.1f} g** | "
                         f"Lipides/portion: **{totals['lipides_par_portion']:.1f} g**"
                     )
-                    st.dataframe(recipe.get("ingredients", []), use_container_width=True)
+                    display_ingredients = []
+                    for ing in recipe.get("ingredients", []):
+                        display_ing = dict(ing)
+                        display_ing["name"] = resolve_ingredient_name(ing)
+                        display_ingredients.append(display_ing)
+                    st.dataframe(display_ingredients, use_container_width=True)
                     if st.button(f"🗑️ Supprimer {recipe['name']}", key=f"del_{recipe['name']}"):
                         new_recipes = [r for r in recipes if r.get("name") != recipe.get("name")]
                         save_recipes(new_recipes)
