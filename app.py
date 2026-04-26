@@ -1,5 +1,6 @@
 import csv
 import json
+import math
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -77,22 +78,58 @@ def quantity_to_grams(quantity: float, unit: str) -> Optional[float]:
     return None
 
 
+def safe_float(value: object, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return default
+        value = stripped.replace(",", ".")
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    if math.isnan(number) or math.isinf(number):
+        return default
+    return number
+
+
 def compute_ingredient_macros(ingredient: Dict, foods_map: Dict[str, Dict]) -> Dict:
     ing = dict(ingredient)
     food_name = str(ing.get("food", "")).strip()
-    auto = bool(ing.get("auto", False))
-    grams = quantity_to_grams(float(ing.get("quantity", 0) or 0), str(ing.get("unit", "g")))
+    auto = bool(ing.get("auto", True))
+    quantity = safe_float(ing.get("quantity", 0), 0.0)
+    unit = str(ing.get("unit", "g"))
+    grams = quantity_to_grams(quantity, unit)
 
     if auto and food_name and grams is not None and food_name in foods_map:
         factor = grams / 100.0
         food = foods_map[food_name]
-        ing["name"] = food_name
-        ing["calories"] = round(float(food.get("calories", 0) or 0) * factor, 2)
-        ing["proteines"] = round(float(food.get("proteines", 0) or 0) * factor, 2)
-        ing["glucides"] = round(float(food.get("glucides", 0) or 0) * factor, 2)
-        ing["lipides"] = round(float(food.get("lipides", 0) or 0) * factor, 2)
+        if not str(ing.get("name", "")).strip():
+            ing["name"] = food_name
+        ing["calories"] = round(safe_float(food.get("calories", 0), 0.0) * factor, 2)
+        ing["proteines"] = round(safe_float(food.get("proteines", 0), 0.0) * factor, 2)
+        ing["glucides"] = round(safe_float(food.get("glucides", 0), 0.0) * factor, 2)
+        ing["lipides"] = round(safe_float(food.get("lipides", 0), 0.0) * factor, 2)
 
     return ing
+
+
+def validate_ingredient_row(ingredient: Dict, foods_map: Dict[str, Dict], row_index: int) -> Optional[str]:
+    food_name = str(ingredient.get("food", "")).strip()
+    display_name = str(ingredient.get("name", "")).strip()
+    auto = bool(ingredient.get("auto", True))
+    unit = str(ingredient.get("unit", "g"))
+    grams = quantity_to_grams(safe_float(ingredient.get("quantity", 0), 0.0), unit)
+
+    if not food_name and not display_name:
+        return f"Ligne {row_index} : renseignez un aliment (base) ou un nom affiché."
+    if auto and food_name and food_name not in foods_map:
+        return f"Ligne {row_index} : l'aliment '{food_name}' est introuvable dans la base."
+    if auto and food_name and unit in ("g", "kg") and grams is None:
+        return f"Ligne {row_index} : unité invalide pour le calcul automatique."
+    return None
 
 
 def sanitize_ingredients(raw_ingredients: List[Dict], foods_map: Dict[str, Dict]) -> List[Dict]:
@@ -107,13 +144,13 @@ def sanitize_ingredients(raw_ingredients: List[Dict], foods_map: Dict[str, Dict]
             {
                 "name": display_name,
                 "food": food_name,
-                "auto": bool(computed.get("auto", False)),
-                "quantity": float(computed.get("quantity", 0) or 0),
+                "auto": bool(computed.get("auto", True)),
+                "quantity": safe_float(computed.get("quantity", 0), 0.0),
                 "unit": str(computed.get("unit", "g")),
-                "calories": float(computed.get("calories", 0) or 0),
-                "proteines": float(computed.get("proteines", 0) or 0),
-                "glucides": float(computed.get("glucides", 0) or 0),
-                "lipides": float(computed.get("lipides", 0) or 0),
+                "calories": safe_float(computed.get("calories", 0), 0.0),
+                "proteines": safe_float(computed.get("proteines", 0), 0.0),
+                "glucides": safe_float(computed.get("glucides", 0), 0.0),
+                "lipides": safe_float(computed.get("lipides", 0), 0.0),
             }
         )
     return clean_ingredients
@@ -122,10 +159,10 @@ def sanitize_ingredients(raw_ingredients: List[Dict], foods_map: Dict[str, Dict]
 def recipe_totals(recipe: Dict) -> Dict[str, float]:
     totals = {"calories": 0.0, "proteines": 0.0, "glucides": 0.0, "lipides": 0.0}
     for ing in recipe.get("ingredients", []):
-        totals["calories"] += float(ing.get("calories", 0) or 0)
-        totals["proteines"] += float(ing.get("proteines", 0) or 0)
-        totals["glucides"] += float(ing.get("glucides", 0) or 0)
-        totals["lipides"] += float(ing.get("lipides", 0) or 0)
+        totals["calories"] += safe_float(ing.get("calories", 0), 0.0)
+        totals["proteines"] += safe_float(ing.get("proteines", 0), 0.0)
+        totals["glucides"] += safe_float(ing.get("glucides", 0), 0.0)
+        totals["lipides"] += safe_float(ing.get("lipides", 0), 0.0)
 
     portions = max(int(recipe.get("portions", 1) or 1), 1)
     totals["calories_par_portion"] = totals["calories"] / portions
@@ -269,7 +306,7 @@ def main() -> None:
                 column_config={
                     "food": st.column_config.SelectboxColumn("Aliment (base)", options=sorted(foods_map.keys())),
                     "name": st.column_config.TextColumn("Nom affiché"),
-                    "auto": st.column_config.CheckboxColumn("Auto"),
+                    "auto": st.column_config.CheckboxColumn("Auto", default=True),
                     "quantity": st.column_config.NumberColumn("Quantité", min_value=0.0, step=0.1),
                     "unit": st.column_config.SelectboxColumn("Unité", options=UNITS),
                     "calories": st.column_config.NumberColumn("Calories", min_value=0.0, step=1.0),
@@ -285,6 +322,19 @@ def main() -> None:
             if not recipe_name.strip():
                 st.error("Le nom de la recette est obligatoire.")
             else:
+                row_errors = []
+                for idx, ingredient in enumerate(ingredients, start=1):
+                    computed_row = compute_ingredient_macros(ingredient, foods_map)
+                    error = validate_ingredient_row(computed_row, foods_map, idx)
+                    if error:
+                        row_errors.append(error)
+
+                if row_errors:
+                    st.error("Impossible de sauvegarder : certaines lignes sont invalides.")
+                    for error in row_errors:
+                        st.warning(error)
+                    st.stop()
+
                 clean_ingredients = sanitize_ingredients(ingredients, foods_map)
                 recipe_obj = {
                     "name": recipe_name.strip(),
