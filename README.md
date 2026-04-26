@@ -22,6 +22,10 @@ Application locale Python (Streamlit) pour gérer des recettes de régime, calcu
 - Base d'aliments courants fournie par défaut (valeurs nutritionnelles **pour 100 g**)
 - Dans l'éditeur d'ingrédients, tu peux sélectionner un aliment depuis la base
 - Si `Auto` est activé et que l'unité est `g` ou `kg`, les calories/macros sont recalculées automatiquement selon la quantité
+- La case `Auto` est cochée par défaut sur les nouvelles lignes d'ingrédients
+- Les champs vides/None/NaN sont traités comme `0` pour éviter les totaux `nan`
+- Si `Nom affiché` est vide, le nom de l'aliment sélectionné est utilisé automatiquement
+- Validation avant sauvegarde : une ligne sans aliment ni nom est bloquante avec message visuel
 - Tu peux toujours modifier les calories/macros à la main (désactive `Auto` pour conserver tes valeurs personnalisées)
 - Tu peux ajouter, modifier et supprimer des aliments dans la section **Base d'aliments**
 - La base est sauvegardée localement en JSON
