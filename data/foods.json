@@ -1,0 +1,149 @@
+[
+  {
+    "name": "pâtes sèches",
+    "calories": 371,
+    "proteines": 13.0,
+    "glucides": 75.0,
+    "lipides": 1.5
+  },
+  {
+    "name": "riz cru",
+    "calories": 360,
+    "proteines": 7.0,
+    "glucides": 79.0,
+    "lipides": 0.6
+  },
+  {
+    "name": "pommes de terre",
+    "calories": 77,
+    "proteines": 2.0,
+    "glucides": 17.0,
+    "lipides": 0.1
+  },
+  {
+    "name": "patate douce",
+    "calories": 86,
+    "proteines": 1.6,
+    "glucides": 20.0,
+    "lipides": 0.1
+  },
+  {
+    "name": "bœuf haché maigre",
+    "calories": 137,
+    "proteines": 21.0,
+    "glucides": 0.0,
+    "lipides": 5.0
+  },
+  {
+    "name": "poulet",
+    "calories": 165,
+    "proteines": 31.0,
+    "glucides": 0.0,
+    "lipides": 3.6
+  },
+  {
+    "name": "thon",
+    "calories": 132,
+    "proteines": 29.0,
+    "glucides": 0.0,
+    "lipides": 1.0
+  },
+  {
+    "name": "œuf",
+    "calories": 143,
+    "proteines": 13.0,
+    "glucides": 0.7,
+    "lipides": 10.0
+  },
+  {
+    "name": "tomates",
+    "calories": 18,
+    "proteines": 0.9,
+    "glucides": 3.9,
+    "lipides": 0.2
+  },
+  {
+    "name": "oignons",
+    "calories": 40,
+    "proteines": 1.1,
+    "glucides": 9.3,
+    "lipides": 0.1
+  },
+  {
+    "name": "poivrons",
+    "calories": 31,
+    "proteines": 1.0,
+    "glucides": 6.0,
+    "lipides": 0.3
+  },
+  {
+    "name": "courgettes",
+    "calories": 17,
+    "proteines": 1.2,
+    "glucides": 3.1,
+    "lipides": 0.3
+  },
+  {
+    "name": "épinards",
+    "calories": 23,
+    "proteines": 2.9,
+    "glucides": 3.6,
+    "lipides": 0.4
+  },
+  {
+    "name": "carottes",
+    "calories": 41,
+    "proteines": 0.9,
+    "glucides": 9.6,
+    "lipides": 0.2
+  },
+  {
+    "name": "fromage râpé",
+    "calories": 356,
+    "proteines": 25.0,
+    "glucides": 2.0,
+    "lipides": 27.0
+  },
+  {
+    "name": "huile d’olive",
+    "calories": 884,
+    "proteines": 0.0,
+    "glucides": 0.0,
+    "lipides": 100.0
+  },
+  {
+    "name": "banane",
+    "calories": 89,
+    "proteines": 1.1,
+    "glucides": 23.0,
+    "lipides": 0.3
+  },
+  {
+    "name": "pomme",
+    "calories": 52,
+    "proteines": 0.3,
+    "glucides": 14.0,
+    "lipides": 0.2
+  },
+  {
+    "name": "avoine",
+    "calories": 389,
+    "proteines": 16.9,
+    "glucides": 66.0,
+    "lipides": 6.9
+  },
+  {
+    "name": "graines de chia",
+    "calories": 486,
+    "proteines": 16.5,
+    "glucides": 42.0,
+    "lipides": 30.7
+  },
+  {
+    "name": "graines de lin",
+    "calories": 534,
+    "proteines": 18.3,
+    "glucides": 28.9,
+    "lipides": 42.2
+  }
+]
