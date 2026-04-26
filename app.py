@@ -9,6 +9,9 @@ import streamlit as st
 DATA_DIR = Path("data")
 RECIPES_FILE = DATA_DIR / "recipes.json"
 FOODS_FILE = DATA_DIR / "foods.json"
+MEAL_PLAN_FILE = DATA_DIR / "meal_plan.json"
+WEEK_DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+MEAL_SLOTS = ["Petit-déjeuner", "Déjeuner", "Dîner", "Collation"]
 UNITS = [
     "g",
     "kg",
@@ -141,6 +144,8 @@ def ensure_data_files() -> None:
         RECIPES_FILE.write_text("[]", encoding="utf-8")
     if not FOODS_FILE.exists():
         FOODS_FILE.write_text(json.dumps(DEFAULT_FOODS, indent=2, ensure_ascii=False), encoding="utf-8")
+    if not MEAL_PLAN_FILE.exists():
+        MEAL_PLAN_FILE.write_text("{}", encoding="utf-8")
 
 
 def load_recipes() -> List[Dict]:
@@ -187,6 +192,44 @@ def load_foods() -> List[Dict]:
 
 def save_foods(foods: List[Dict]) -> None:
     FOODS_FILE.write_text(json.dumps(foods, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def default_meal_plan() -> Dict[str, Dict[str, Dict[str, float | str]]]:
+    return {
+        day: {
+            meal: {"recipe": "", "portions": 1.0}
+            for meal in MEAL_SLOTS
+        }
+        for day in WEEK_DAYS
+    }
+
+
+def load_meal_plan() -> Dict[str, Dict[str, Dict[str, float | str]]]:
+    ensure_data_files()
+    fallback = default_meal_plan()
+    try:
+        data = json.loads(MEAL_PLAN_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return fallback
+    if not isinstance(data, dict):
+        return fallback
+
+    clean_plan = default_meal_plan()
+    for day in WEEK_DAYS:
+        raw_day = data.get(day, {})
+        if not isinstance(raw_day, dict):
+            continue
+        for meal in MEAL_SLOTS:
+            raw_slot = raw_day.get(meal, {})
+            if not isinstance(raw_slot, dict):
+                continue
+            clean_plan[day][meal]["recipe"] = normalize_text(raw_slot.get("recipe"))
+            clean_plan[day][meal]["portions"] = max(safe_float(raw_slot.get("portions", 1), 1.0), 0.0)
+    return clean_plan
+
+
+def save_meal_plan(meal_plan: Dict[str, Dict[str, Dict[str, float | str]]]) -> None:
+    MEAL_PLAN_FILE.write_text(json.dumps(meal_plan, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def canonical_unit(unit: object) -> str:
@@ -392,6 +435,100 @@ def rows_to_csv_bytes(rows: List[List[str]]) -> bytes:
     return output.getvalue().encode("utf-8")
 
 
+def meal_plan_to_csv_rows(
+    meal_plan: Dict[str, Dict[str, Dict[str, float | str]]],
+    recipes_map: Dict[str, Dict],
+) -> List[List[str]]:
+    rows = [[
+        "jour", "repas", "recette", "portions_consommees",
+        "calories", "proteines", "glucides", "lipides",
+    ]]
+    for day in WEEK_DAYS:
+        for meal in MEAL_SLOTS:
+            slot = meal_plan.get(day, {}).get(meal, {})
+            recipe_name = normalize_text(slot.get("recipe"))
+            portions = max(safe_float(slot.get("portions", 1), 0.0), 0.0)
+            if not recipe_name or portions <= 0:
+                rows.append([day, meal, "", str(portions), "0", "0", "0", "0"])
+                continue
+            recipe = recipes_map.get(recipe_name)
+            if not recipe:
+                rows.append([day, meal, recipe_name, str(portions), "0", "0", "0", "0"])
+                continue
+            totals = recipe_totals(recipe)
+            rows.append([
+                day,
+                meal,
+                recipe_name,
+                str(portions),
+                str(round(totals["calories_par_portion"] * portions, 2)),
+                str(round(totals["proteines_par_portion"] * portions, 2)),
+                str(round(totals["glucides_par_portion"] * portions, 2)),
+                str(round(totals["lipides_par_portion"] * portions, 2)),
+            ])
+    return rows
+
+
+def meal_plan_totals(
+    meal_plan: Dict[str, Dict[str, Dict[str, float | str]]],
+    recipes_map: Dict[str, Dict],
+) -> tuple[Dict[str, Dict[str, float]], Dict[str, float]]:
+    per_day: Dict[str, Dict[str, float]] = {
+        day: {"calories": 0.0, "proteines": 0.0, "glucides": 0.0, "lipides": 0.0}
+        for day in WEEK_DAYS
+    }
+    week_totals = {"calories": 0.0, "proteines": 0.0, "glucides": 0.0, "lipides": 0.0}
+
+    for day in WEEK_DAYS:
+        for meal in MEAL_SLOTS:
+            slot = meal_plan.get(day, {}).get(meal, {})
+            recipe_name = normalize_text(slot.get("recipe"))
+            portions = max(safe_float(slot.get("portions", 1), 0.0), 0.0)
+            if not recipe_name or portions <= 0:
+                continue
+            recipe = recipes_map.get(recipe_name)
+            if not recipe:
+                continue
+            totals = recipe_totals(recipe)
+            per_day[day]["calories"] += totals["calories_par_portion"] * portions
+            per_day[day]["proteines"] += totals["proteines_par_portion"] * portions
+            per_day[day]["glucides"] += totals["glucides_par_portion"] * portions
+            per_day[day]["lipides"] += totals["lipides_par_portion"] * portions
+
+        for macro in week_totals:
+            week_totals[macro] += per_day[day][macro]
+    return per_day, week_totals
+
+
+def build_shopping_list_from_meal_plan(
+    meal_plan: Dict[str, Dict[str, Dict[str, float | str]]],
+    recipes_map: Dict[str, Dict],
+) -> Dict[str, Dict[str, float]]:
+    shopping: Dict[str, Dict[str, float]] = {}
+    for day in WEEK_DAYS:
+        for meal in MEAL_SLOTS:
+            slot = meal_plan.get(day, {}).get(meal, {})
+            recipe_name = normalize_text(slot.get("recipe"))
+            portions_eaten = max(safe_float(slot.get("portions", 1), 0.0), 0.0)
+            recipe = recipes_map.get(recipe_name) if recipe_name else None
+            if not recipe or portions_eaten <= 0:
+                continue
+
+            recipe_portions = max(safe_float(recipe.get("portions", 1), 1.0), 1.0)
+            scale = portions_eaten / recipe_portions
+            for ing in recipe.get("ingredients", []):
+                name = resolve_ingredient_name(ing)
+                unit = ing.get("unit", "")
+                qty = safe_float(ing.get("quantity", 0), 0.0) * scale
+                if not name or qty <= 0:
+                    continue
+                key = f"{name}__{unit}"
+                if key not in shopping:
+                    shopping[key] = {"name": name, "unit": unit, "quantity": 0.0}
+                shopping[key]["quantity"] += qty
+    return shopping
+
+
 def normalize_ingredient_for_editor(ingredient: Dict) -> Dict:
     row = dict(ingredient)
     row.setdefault("food", normalize_text(row.get("name")))
@@ -432,8 +569,10 @@ def main() -> None:
     if recipes_normalized:
         save_recipes(recipes)
     recipe_names = [r.get("name") for r in recipes]
+    recipes_map = {r.get("name"): r for r in recipes if r.get("name")}
+    meal_plan = load_meal_plan()
 
-    tab1, tab2, tab3 = st.tabs(["Recettes", "Meal Prep", "Exports CSV"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Recettes", "Meal Prep", "Planning semaine", "Exports CSV"])
 
     with tab1:
         st.subheader("Créer / Modifier une recette")
@@ -638,6 +777,102 @@ def main() -> None:
                 st.dataframe(shopping_rows, use_container_width=True)
 
     with tab3:
+        st.subheader("Planning repas sur 7 jours")
+        st.caption("Choisis une recette et le nombre de portions consommées pour chaque repas.")
+        if not recipes:
+            st.info("Ajoute des recettes pour construire ton planning de semaine.")
+        else:
+            with st.form("meal_plan_form"):
+                updated_plan = default_meal_plan()
+                recipe_options = [""] + recipe_names
+                for day in WEEK_DAYS:
+                    st.markdown(f"### {day}")
+                    cols = st.columns(2)
+                    for idx, meal in enumerate(MEAL_SLOTS):
+                        with cols[idx % 2]:
+                            current_slot = meal_plan.get(day, {}).get(meal, {"recipe": "", "portions": 1.0})
+                            current_recipe = normalize_text(current_slot.get("recipe"))
+                            if current_recipe not in recipe_options:
+                                current_recipe = ""
+                            selected_recipe = st.selectbox(
+                                f"{meal} ({day})",
+                                options=recipe_options,
+                                index=recipe_options.index(current_recipe),
+                                key=f"plan_{day}_{meal}_recipe",
+                                format_func=lambda x: x if x else "— Aucun —",
+                            )
+                            portions_val = st.number_input(
+                                f"Portions ({meal} - {day})",
+                                min_value=0.0,
+                                step=0.5,
+                                value=max(safe_float(current_slot.get("portions", 1), 1.0), 0.0),
+                                key=f"plan_{day}_{meal}_portions",
+                            )
+                            updated_plan[day][meal] = {
+                                "recipe": selected_recipe,
+                                "portions": portions_val,
+                            }
+                save_plan_clicked = st.form_submit_button("💾 Sauvegarder le planning")
+
+            if save_plan_clicked:
+                save_meal_plan(updated_plan)
+                st.success("Planning hebdomadaire sauvegardé dans data/meal_plan.json.")
+                meal_plan = updated_plan
+
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("🧹 Réinitialiser le planning"):
+                    meal_plan = default_meal_plan()
+                    save_meal_plan(meal_plan)
+                    st.warning("Planning vidé et réinitialisé.")
+                    st.rerun()
+            with col_b:
+                meal_plan_csv = rows_to_csv_bytes(meal_plan_to_csv_rows(meal_plan, recipes_map))
+                st.download_button(
+                    "⬇️ Exporter le planning semaine (CSV)",
+                    data=meal_plan_csv,
+                    file_name="meal_plan_week_export.csv",
+                    mime="text/csv",
+                )
+
+            st.markdown("### Totaux journaliers")
+            daily_totals, weekly_totals = meal_plan_totals(meal_plan, recipes_map)
+            st.dataframe(
+                [
+                    {
+                        "jour": day,
+                        "calories": round(daily_totals[day]["calories"], 1),
+                        "proteines": round(daily_totals[day]["proteines"], 1),
+                        "glucides": round(daily_totals[day]["glucides"], 1),
+                        "lipides": round(daily_totals[day]["lipides"], 1),
+                    }
+                    for day in WEEK_DAYS
+                ],
+                use_container_width=True,
+            )
+            st.markdown(
+                f"**Total semaine** — Calories: **{weekly_totals['calories']:.1f} kcal** | "
+                f"Protéines: **{weekly_totals['proteines']:.1f} g** | "
+                f"Glucides: **{weekly_totals['glucides']:.1f} g** | "
+                f"Lipides: **{weekly_totals['lipides']:.1f} g**"
+            )
+
+            st.markdown("### Liste de courses basée sur le planning")
+            weekly_shopping = build_shopping_list_from_meal_plan(meal_plan, recipes_map)
+            if not weekly_shopping:
+                st.info("Le planning est vide : aucune course à générer.")
+            else:
+                weekly_shopping_rows = [
+                    {
+                        "ingredient": item["name"],
+                        "quantite_totale": round(item["quantity"], 2),
+                        "unite": item["unit"],
+                    }
+                    for item in weekly_shopping.values()
+                ]
+                st.dataframe(weekly_shopping_rows, use_container_width=True)
+
+    with tab4:
         st.subheader("Exports CSV")
         recipes_csv = rows_to_csv_bytes(recipes_to_csv_rows(recipes))
         st.download_button(
