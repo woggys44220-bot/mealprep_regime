@@ -169,5 +169,188 @@
     "unit_conversions": {
       "cuillère à soupe": 10
     }
+  },
+  {
+    "name": "kiwi",
+    "calories": 61,
+    "proteines": 1.1,
+    "glucides": 14.7,
+    "lipides": 0.5,
+    "unit_conversions": {
+      "pièce": 75
+    }
+  },
+  {
+    "name": "fruits rouges mélangés",
+    "calories": 50,
+    "proteines": 1.0,
+    "glucides": 11.0,
+    "lipides": 0.3,
+    "unit_conversions": {
+      "poignée": 80,
+      "poignée de fruits rouges": 80
+    }
+  },
+  {
+    "name": "framboises",
+    "calories": 52,
+    "proteines": 1.2,
+    "glucides": 11.9,
+    "lipides": 0.7,
+    "unit_conversions": {
+      "poignée": 70
+    }
+  },
+  {
+    "name": "mûres",
+    "calories": 43,
+    "proteines": 1.4,
+    "glucides": 9.6,
+    "lipides": 0.5,
+    "unit_conversions": {
+      "poignée": 70
+    }
+  },
+  {
+    "name": "bleuets",
+    "calories": 57,
+    "proteines": 0.7,
+    "glucides": 14.5,
+    "lipides": 0.3,
+    "unit_conversions": {
+      "poignée": 75
+    }
+  },
+  {
+    "name": "myrtilles",
+    "calories": 57,
+    "proteines": 0.7,
+    "glucides": 14.5,
+    "lipides": 0.3,
+    "unit_conversions": {
+      "poignée": 75
+    }
+  },
+  {
+    "name": "fraises",
+    "calories": 32,
+    "proteines": 0.7,
+    "glucides": 7.7,
+    "lipides": 0.3,
+    "unit_conversions": {
+      "poignée": 100
+    }
+  },
+  {
+    "name": "citron vert",
+    "calories": 30,
+    "proteines": 0.7,
+    "glucides": 10.5,
+    "lipides": 0.2,
+    "unit_conversions": {
+      "pièce": 65
+    }
+  },
+  {
+    "name": "jus de citron vert",
+    "calories": 25,
+    "proteines": 0.4,
+    "glucides": 8.4,
+    "lipides": 0.1,
+    "unit_conversions": {
+      "cuillère à soupe": 15
+    }
+  },
+  {
+    "name": "jus de citron",
+    "calories": 22,
+    "proteines": 0.4,
+    "glucides": 6.9,
+    "lipides": 0.2,
+    "unit_conversions": {
+      "cuillère à soupe": 15
+    }
+  },
+  {
+    "name": "gingembre frais",
+    "calories": 80,
+    "proteines": 1.8,
+    "glucides": 17.8,
+    "lipides": 0.8,
+    "unit_conversions": {
+      "morceau": 5
+    }
+  },
+  {
+    "name": "concombre",
+    "calories": 15,
+    "proteines": 0.7,
+    "glucides": 3.6,
+    "lipides": 0.1
+  },
+  {
+    "name": "lait d’amande non sucré",
+    "calories": 15,
+    "proteines": 0.6,
+    "glucides": 0.3,
+    "lipides": 1.2
+  },
+  {
+    "name": "lait écrémé",
+    "calories": 34,
+    "proteines": 3.4,
+    "glucides": 5.0,
+    "lipides": 0.1
+  },
+  {
+    "name": "yogourt grec nature 0 %",
+    "calories": 59,
+    "proteines": 10.3,
+    "glucides": 3.6,
+    "lipides": 0.4
+  },
+  {
+    "name": "fromage blanc 0 %",
+    "calories": 46,
+    "proteines": 8.0,
+    "glucides": 4.1,
+    "lipides": 0.2
+  },
+  {
+    "name": "épinards frais",
+    "calories": 23,
+    "proteines": 2.9,
+    "glucides": 3.6,
+    "lipides": 0.4
+  },
+  {
+    "name": "miel",
+    "calories": 304,
+    "proteines": 0.3,
+    "glucides": 82.4,
+    "lipides": 0.0,
+    "unit_conversions": {
+      "cuillère à café": 7
+    }
+  },
+  {
+    "name": "beurre de peanut",
+    "calories": 588,
+    "proteines": 25.0,
+    "glucides": 20.0,
+    "lipides": 50.0,
+    "unit_conversions": {
+      "cuillère à soupe": 16
+    }
+  },
+  {
+    "name": "beurre de cacahuète",
+    "calories": 588,
+    "proteines": 25.0,
+    "glucides": 20.0,
+    "lipides": 50.0,
+    "unit_conversions": {
+      "cuillère à soupe": 16
+    }
   }
 ]

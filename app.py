@@ -17,10 +17,16 @@ UNITS = [
     "pièce",
     "unité",
     "unite",
+    "poignée",
+    "poignee",
+    "morceau",
     "cuillère",
     "cuillère à soupe",
     "c. à soupe",
     "cas",
+    "cuillère à café",
+    "c. à café",
+    "cac",
     "tasse",
 ]
 UNIT_ALIASES = {
@@ -30,6 +36,10 @@ UNIT_ALIASES = {
     "piece": "pièce",
     "unité": "pièce",
     "unite": "pièce",
+    "poignée": "poignée",
+    "poignee": "poignée",
+    "poignée de fruits rouges": "poignée",
+    "morceau": "morceau",
     "cuillère": "cuillère à soupe",
     "cuillere": "cuillère à soupe",
     "cuillère à soupe": "cuillère à soupe",
@@ -37,6 +47,11 @@ UNIT_ALIASES = {
     "c. à soupe": "cuillère à soupe",
     "c a soupe": "cuillère à soupe",
     "cas": "cuillère à soupe",
+    "cuillère à café": "cuillère à café",
+    "cuillere a cafe": "cuillère à café",
+    "c. à café": "cuillère à café",
+    "c a cafe": "cuillère à café",
+    "cac": "cuillère à café",
 }
 
 DEFAULT_FOODS: List[Dict[str, float | str]] = [
@@ -266,8 +281,10 @@ def validate_ingredient_row(ingredient: Dict, foods_map: Dict[str, Dict], row_in
     if auto and food_name and food_name not in foods_map:
         return f"Ligne {row_index} : l'aliment '{food_name}' est introuvable dans la base."
     if auto and food_name and grams is None:
+        unit_label = normalize_text(unit) or "(vide)"
         return (
-            f"Ligne {row_index} : Unité non reconnue, utilise g/kg ou ajoute une conversion dans la base d'aliments."
+            f"Ligne {row_index} : unité '{unit_label}' non reconnue pour '{food_name}'. "
+            "Utilise g/kg ou ajoute une conversion d'unité dans la base d'aliments."
         )
     return None
 

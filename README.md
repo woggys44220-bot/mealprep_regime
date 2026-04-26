@@ -29,6 +29,37 @@ Application locale Python (Streamlit) pour gérer des recettes de régime, calcu
 - Tu peux toujours modifier les calories/macros à la main (désactive `Auto` pour conserver tes valeurs personnalisées)
 - Tu peux ajouter, modifier et supprimer des aliments dans la section **Base d'aliments**
 - La base est sauvegardée localement en JSON
+- Conversions d’unités pratiques prises en charge (selon les aliments configurés) : `pièce`, `poignée`, `morceau`, `cuillère à soupe`, `cuillère à café`
+- Alias d’unités reconnus : `poignee`, `poignée de fruits rouges`, `unite`, `unité`, `cuillère`, `c. à soupe`, `cas`, `c. à café`, `cac`
+- Si une unité n’est pas reconnue pour un aliment en mode `Auto`, une alerte claire indique la ligne, l’unité et l’aliment concerné
+
+
+## Aliments ajoutés (smoothies / régime)
+
+La base `data/foods.json` inclut aussi :
+
+- kiwi
+- fruits rouges mélangés
+- framboises
+- mûres
+- bleuets
+- myrtilles
+- fraises
+- citron vert
+- jus de citron vert
+- jus de citron
+- gingembre frais
+- concombre
+- lait d’amande non sucré
+- lait écrémé
+- yogourt grec nature 0 %
+- fromage blanc 0 %
+- épinards frais
+- miel
+- beurre de peanut
+- beurre de cacahuète
+
+Les conversions pratiques demandées (ex. `1 pièce`, `1 poignée`, `1 c. à soupe`, `1 c. à café`, `1 morceau`) sont préconfigurées quand elles sont pertinentes.
 
 ## Structure
 
