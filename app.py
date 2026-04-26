@@ -1,23 +1,50 @@
 import csv
 import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import streamlit as st
 
 DATA_DIR = Path("data")
 RECIPES_FILE = DATA_DIR / "recipes.json"
+FOODS_FILE = DATA_DIR / "foods.json"
 UNITS = ["g", "kg", "ml", "l", "pièce", "cuillère", "tasse"]
 
+DEFAULT_FOODS: List[Dict[str, float | str]] = [
+    {"name": "pâtes sèches", "calories": 371, "proteines": 13.0, "glucides": 75.0, "lipides": 1.5},
+    {"name": "riz cru", "calories": 360, "proteines": 7.0, "glucides": 79.0, "lipides": 0.6},
+    {"name": "pommes de terre", "calories": 77, "proteines": 2.0, "glucides": 17.0, "lipides": 0.1},
+    {"name": "patate douce", "calories": 86, "proteines": 1.6, "glucides": 20.0, "lipides": 0.1},
+    {"name": "bœuf haché maigre", "calories": 137, "proteines": 21.0, "glucides": 0.0, "lipides": 5.0},
+    {"name": "poulet", "calories": 165, "proteines": 31.0, "glucides": 0.0, "lipides": 3.6},
+    {"name": "thon", "calories": 132, "proteines": 29.0, "glucides": 0.0, "lipides": 1.0},
+    {"name": "œuf", "calories": 143, "proteines": 13.0, "glucides": 0.7, "lipides": 10.0},
+    {"name": "tomates", "calories": 18, "proteines": 0.9, "glucides": 3.9, "lipides": 0.2},
+    {"name": "oignons", "calories": 40, "proteines": 1.1, "glucides": 9.3, "lipides": 0.1},
+    {"name": "poivrons", "calories": 31, "proteines": 1.0, "glucides": 6.0, "lipides": 0.3},
+    {"name": "courgettes", "calories": 17, "proteines": 1.2, "glucides": 3.1, "lipides": 0.3},
+    {"name": "épinards", "calories": 23, "proteines": 2.9, "glucides": 3.6, "lipides": 0.4},
+    {"name": "carottes", "calories": 41, "proteines": 0.9, "glucides": 9.6, "lipides": 0.2},
+    {"name": "fromage râpé", "calories": 356, "proteines": 25.0, "glucides": 2.0, "lipides": 27.0},
+    {"name": "huile d’olive", "calories": 884, "proteines": 0.0, "glucides": 0.0, "lipides": 100.0},
+    {"name": "banane", "calories": 89, "proteines": 1.1, "glucides": 23.0, "lipides": 0.3},
+    {"name": "pomme", "calories": 52, "proteines": 0.3, "glucides": 14.0, "lipides": 0.2},
+    {"name": "avoine", "calories": 389, "proteines": 16.9, "glucides": 66.0, "lipides": 6.9},
+    {"name": "graines de chia", "calories": 486, "proteines": 16.5, "glucides": 42.0, "lipides": 30.7},
+    {"name": "graines de lin", "calories": 534, "proteines": 18.3, "glucides": 28.9, "lipides": 42.2},
+]
 
-def ensure_data_file() -> None:
+
+def ensure_data_files() -> None:
     DATA_DIR.mkdir(exist_ok=True)
     if not RECIPES_FILE.exists():
         RECIPES_FILE.write_text("[]", encoding="utf-8")
+    if not FOODS_FILE.exists():
+        FOODS_FILE.write_text(json.dumps(DEFAULT_FOODS, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def load_recipes() -> List[Dict]:
-    ensure_data_file()
+    ensure_data_files()
     try:
         data = json.loads(RECIPES_FILE.read_text(encoding="utf-8"))
         return data if isinstance(data, list) else []
@@ -27,6 +54,69 @@ def load_recipes() -> List[Dict]:
 
 def save_recipes(recipes: List[Dict]) -> None:
     RECIPES_FILE.write_text(json.dumps(recipes, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def load_foods() -> List[Dict]:
+    ensure_data_files()
+    try:
+        data = json.loads(FOODS_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except json.JSONDecodeError:
+        return []
+
+
+def save_foods(foods: List[Dict]) -> None:
+    FOODS_FILE.write_text(json.dumps(foods, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def quantity_to_grams(quantity: float, unit: str) -> Optional[float]:
+    if unit == "g":
+        return quantity
+    if unit == "kg":
+        return quantity * 1000
+    return None
+
+
+def compute_ingredient_macros(ingredient: Dict, foods_map: Dict[str, Dict]) -> Dict:
+    ing = dict(ingredient)
+    food_name = str(ing.get("food", "")).strip()
+    auto = bool(ing.get("auto", False))
+    grams = quantity_to_grams(float(ing.get("quantity", 0) or 0), str(ing.get("unit", "g")))
+
+    if auto and food_name and grams is not None and food_name in foods_map:
+        factor = grams / 100.0
+        food = foods_map[food_name]
+        ing["name"] = food_name
+        ing["calories"] = round(float(food.get("calories", 0) or 0) * factor, 2)
+        ing["proteines"] = round(float(food.get("proteines", 0) or 0) * factor, 2)
+        ing["glucides"] = round(float(food.get("glucides", 0) or 0) * factor, 2)
+        ing["lipides"] = round(float(food.get("lipides", 0) or 0) * factor, 2)
+
+    return ing
+
+
+def sanitize_ingredients(raw_ingredients: List[Dict], foods_map: Dict[str, Dict]) -> List[Dict]:
+    clean_ingredients = []
+    for ing in raw_ingredients:
+        computed = compute_ingredient_macros(ing, foods_map)
+        food_name = str(computed.get("food", "")).strip()
+        display_name = str(computed.get("name", "")).strip() or food_name
+        if not display_name:
+            continue
+        clean_ingredients.append(
+            {
+                "name": display_name,
+                "food": food_name,
+                "auto": bool(computed.get("auto", False)),
+                "quantity": float(computed.get("quantity", 0) or 0),
+                "unit": str(computed.get("unit", "g")),
+                "calories": float(computed.get("calories", 0) or 0),
+                "proteines": float(computed.get("proteines", 0) or 0),
+                "glucides": float(computed.get("glucides", 0) or 0),
+                "lipides": float(computed.get("lipides", 0) or 0),
+            }
+        )
+    return clean_ingredients
 
 
 def recipe_totals(recipe: Dict) -> Dict[str, float]:
@@ -107,9 +197,40 @@ def rows_to_csv_bytes(rows: List[List[str]]) -> bytes:
     return output.getvalue().encode("utf-8")
 
 
+def normalize_ingredient_for_editor(ingredient: Dict) -> Dict:
+    row = dict(ingredient)
+    row.setdefault("food", row.get("name", ""))
+    row.setdefault("auto", True)
+    row.setdefault("name", "")
+    row.setdefault("quantity", 0.0)
+    row.setdefault("unit", "g")
+    row.setdefault("calories", 0.0)
+    row.setdefault("proteines", 0.0)
+    row.setdefault("glucides", 0.0)
+    row.setdefault("lipides", 0.0)
+    return row
+
+
+def default_ingredient_row() -> Dict:
+    return {
+        "food": "",
+        "name": "",
+        "auto": True,
+        "quantity": 0.0,
+        "unit": "g",
+        "calories": 0.0,
+        "proteines": 0.0,
+        "glucides": 0.0,
+        "lipides": 0.0,
+    }
+
+
 def main() -> None:
     st.set_page_config(page_title="Meal Prep Régime", layout="wide")
     st.title("🥗 Meal Prep Régime (V1)")
+
+    foods = load_foods()
+    foods_map = {str(food.get("name", "")).strip(): food for food in foods if str(food.get("name", "")).strip()}
 
     recipes = load_recipes()
     recipe_names = [r.get("name") for r in recipes]
@@ -134,28 +255,21 @@ def main() -> None:
                 if selected_recipe:
                     default_name = selected_recipe.get("name", "")
                     default_portions = int(selected_recipe.get("portions", 1) or 1)
-                    default_ingredients = selected_recipe.get("ingredients", [])
+                    default_ingredients = [normalize_ingredient_for_editor(ing) for ing in selected_recipe.get("ingredients", [])]
 
         with st.form("recipe_form"):
             recipe_name = st.text_input("Nom de la recette", value=default_name)
             portions = st.number_input("Nombre de portions", min_value=1, step=1, value=default_portions)
             st.markdown("### Ingrédients")
+            st.caption("Les aliments de base sont définis pour 100 g. Si `Auto` est activé et l'unité en g/kg, les macros sont calculées automatiquement selon la quantité.")
             ingredients = st.data_editor(
-                default_ingredients if default_ingredients else [
-                    {
-                        "name": "",
-                        "quantity": 0.0,
-                        "unit": "g",
-                        "calories": 0.0,
-                        "proteines": 0.0,
-                        "glucides": 0.0,
-                        "lipides": 0.0,
-                    }
-                ],
+                default_ingredients if default_ingredients else [default_ingredient_row()],
                 num_rows="dynamic",
                 use_container_width=True,
                 column_config={
-                    "name": st.column_config.TextColumn("Ingrédient"),
+                    "food": st.column_config.SelectboxColumn("Aliment (base)", options=sorted(foods_map.keys())),
+                    "name": st.column_config.TextColumn("Nom affiché"),
+                    "auto": st.column_config.CheckboxColumn("Auto"),
                     "quantity": st.column_config.NumberColumn("Quantité", min_value=0.0, step=0.1),
                     "unit": st.column_config.SelectboxColumn("Unité", options=UNITS),
                     "calories": st.column_config.NumberColumn("Calories", min_value=0.0, step=1.0),
@@ -171,22 +285,7 @@ def main() -> None:
             if not recipe_name.strip():
                 st.error("Le nom de la recette est obligatoire.")
             else:
-                clean_ingredients = []
-                for ing in ingredients:
-                    if not str(ing.get("name", "")).strip():
-                        continue
-                    clean_ingredients.append(
-                        {
-                            "name": str(ing.get("name", "")).strip(),
-                            "quantity": float(ing.get("quantity", 0) or 0),
-                            "unit": str(ing.get("unit", "g")),
-                            "calories": float(ing.get("calories", 0) or 0),
-                            "proteines": float(ing.get("proteines", 0) or 0),
-                            "glucides": float(ing.get("glucides", 0) or 0),
-                            "lipides": float(ing.get("lipides", 0) or 0),
-                        }
-                    )
-
+                clean_ingredients = sanitize_ingredients(ingredients, foods_map)
                 recipe_obj = {
                     "name": recipe_name.strip(),
                     "portions": int(portions),
@@ -200,6 +299,47 @@ def main() -> None:
                 save_recipes(recipes)
                 st.success("Recette sauvegardée.")
                 st.rerun()
+
+        st.divider()
+        st.subheader("Base d'aliments (valeurs pour 100 g)")
+        with st.form("foods_form"):
+            edited_foods = st.data_editor(
+                foods if foods else DEFAULT_FOODS,
+                num_rows="dynamic",
+                use_container_width=True,
+                column_config={
+                    "name": st.column_config.TextColumn("Aliment"),
+                    "calories": st.column_config.NumberColumn("Calories", min_value=0.0, step=1.0),
+                    "proteines": st.column_config.NumberColumn("Protéines", min_value=0.0, step=0.1),
+                    "glucides": st.column_config.NumberColumn("Glucides", min_value=0.0, step=0.1),
+                    "lipides": st.column_config.NumberColumn("Lipides", min_value=0.0, step=0.1),
+                },
+            )
+            save_foods_clicked = st.form_submit_button("💾 Sauvegarder la base d'aliments")
+
+        if save_foods_clicked:
+            clean_foods = []
+            seen_names = set()
+            for food in edited_foods:
+                name = str(food.get("name", "")).strip()
+                if not name:
+                    continue
+                if name.lower() in seen_names:
+                    st.error(f"Aliment en double ignoré : {name}")
+                    continue
+                seen_names.add(name.lower())
+                clean_foods.append(
+                    {
+                        "name": name,
+                        "calories": float(food.get("calories", 0) or 0),
+                        "proteines": float(food.get("proteines", 0) or 0),
+                        "glucides": float(food.get("glucides", 0) or 0),
+                        "lipides": float(food.get("lipides", 0) or 0),
+                    }
+                )
+            save_foods(clean_foods)
+            st.success("Base d'aliments sauvegardée.")
+            st.rerun()
 
         st.divider()
         st.subheader("Recettes enregistrées")
@@ -260,20 +400,14 @@ def main() -> None:
         )
 
         if recipes:
-            selected_export = st.multiselect(
-                "Recettes pour la liste de courses CSV",
-                recipe_names,
-                default=recipe_names,
-                key="export_select",
-            )
-            shopping_export = build_shopping_list([r for r in recipes if r.get("name") in selected_export])
-            shopping_csv = rows_to_csv_bytes(shopping_to_csv_rows(shopping_export))
+            selected_for_csv = build_shopping_list(recipes)
+            shopping_csv = rows_to_csv_bytes(shopping_to_csv_rows(selected_for_csv))
             st.download_button(
                 "⬇️ Exporter la liste de courses (CSV)",
                 data=shopping_csv,
                 file_name="shopping_list_export.csv",
                 mime="text/csv",
-                disabled=not shopping_export,
+                disabled=not selected_for_csv,
             )
 
 
