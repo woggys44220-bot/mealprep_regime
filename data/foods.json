@@ -53,7 +53,10 @@
     "calories": 143,
     "proteines": 13.0,
     "glucides": 0.7,
-    "lipides": 10.0
+    "lipides": 10.0,
+    "unit_conversions": {
+      "pièce": 60
+    }
   },
   {
     "name": "tomates",
@@ -95,7 +98,10 @@
     "calories": 41,
     "proteines": 0.9,
     "glucides": 9.6,
-    "lipides": 0.2
+    "lipides": 0.2,
+    "unit_conversions": {
+      "pièce": 80
+    }
   },
   {
     "name": "fromage râpé",
@@ -109,41 +115,59 @@
     "calories": 884,
     "proteines": 0.0,
     "glucides": 0.0,
-    "lipides": 100.0
+    "lipides": 100.0,
+    "unit_conversions": {
+      "cuillère à soupe": 13.5
+    }
   },
   {
     "name": "banane",
     "calories": 89,
     "proteines": 1.1,
     "glucides": 23.0,
-    "lipides": 0.3
+    "lipides": 0.3,
+    "unit_conversions": {
+      "pièce": 120
+    }
   },
   {
     "name": "pomme",
     "calories": 52,
     "proteines": 0.3,
     "glucides": 14.0,
-    "lipides": 0.2
+    "lipides": 0.2,
+    "unit_conversions": {
+      "pièce": 150
+    }
   },
   {
     "name": "avoine",
     "calories": 389,
     "proteines": 16.9,
     "glucides": 66.0,
-    "lipides": 6.9
+    "lipides": 6.9,
+    "unit_conversions": {
+      "cuillère à soupe": 10
+    }
   },
   {
     "name": "graines de chia",
     "calories": 486,
     "proteines": 16.5,
     "glucides": 42.0,
-    "lipides": 30.7
+    "lipides": 30.7,
+    "unit_conversions": {
+      "cuillère à soupe": 12
+    }
   },
   {
     "name": "graines de lin",
     "calories": 534,
     "proteines": 18.3,
     "glucides": 28.9,
-    "lipides": 42.2
+    "lipides": 42.2,
+    "unit_conversions": {
+      "cuillère à soupe": 10
+    }
   }
 ]

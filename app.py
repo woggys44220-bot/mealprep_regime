@@ -9,7 +9,35 @@ import streamlit as st
 DATA_DIR = Path("data")
 RECIPES_FILE = DATA_DIR / "recipes.json"
 FOODS_FILE = DATA_DIR / "foods.json"
-UNITS = ["g", "kg", "ml", "l", "pièce", "cuillère", "tasse"]
+UNITS = [
+    "g",
+    "kg",
+    "ml",
+    "l",
+    "pièce",
+    "unité",
+    "unite",
+    "cuillère",
+    "cuillère à soupe",
+    "c. à soupe",
+    "cas",
+    "tasse",
+]
+UNIT_ALIASES = {
+    "g": "g",
+    "kg": "kg",
+    "pièce": "pièce",
+    "piece": "pièce",
+    "unité": "pièce",
+    "unite": "pièce",
+    "cuillère": "cuillère à soupe",
+    "cuillere": "cuillère à soupe",
+    "cuillère à soupe": "cuillère à soupe",
+    "cuillere a soupe": "cuillère à soupe",
+    "c. à soupe": "cuillère à soupe",
+    "c a soupe": "cuillère à soupe",
+    "cas": "cuillère à soupe",
+}
 
 DEFAULT_FOODS: List[Dict[str, float | str]] = [
     {"name": "pâtes sèches", "calories": 371, "proteines": 13.0, "glucides": 75.0, "lipides": 1.5},
@@ -19,20 +47,76 @@ DEFAULT_FOODS: List[Dict[str, float | str]] = [
     {"name": "bœuf haché maigre", "calories": 137, "proteines": 21.0, "glucides": 0.0, "lipides": 5.0},
     {"name": "poulet", "calories": 165, "proteines": 31.0, "glucides": 0.0, "lipides": 3.6},
     {"name": "thon", "calories": 132, "proteines": 29.0, "glucides": 0.0, "lipides": 1.0},
-    {"name": "œuf", "calories": 143, "proteines": 13.0, "glucides": 0.7, "lipides": 10.0},
+    {
+        "name": "œuf",
+        "calories": 143,
+        "proteines": 13.0,
+        "glucides": 0.7,
+        "lipides": 10.0,
+        "unit_conversions": {"pièce": 60},
+    },
     {"name": "tomates", "calories": 18, "proteines": 0.9, "glucides": 3.9, "lipides": 0.2},
     {"name": "oignons", "calories": 40, "proteines": 1.1, "glucides": 9.3, "lipides": 0.1},
     {"name": "poivrons", "calories": 31, "proteines": 1.0, "glucides": 6.0, "lipides": 0.3},
     {"name": "courgettes", "calories": 17, "proteines": 1.2, "glucides": 3.1, "lipides": 0.3},
     {"name": "épinards", "calories": 23, "proteines": 2.9, "glucides": 3.6, "lipides": 0.4},
-    {"name": "carottes", "calories": 41, "proteines": 0.9, "glucides": 9.6, "lipides": 0.2},
+    {
+        "name": "carottes",
+        "calories": 41,
+        "proteines": 0.9,
+        "glucides": 9.6,
+        "lipides": 0.2,
+        "unit_conversions": {"pièce": 80},
+    },
     {"name": "fromage râpé", "calories": 356, "proteines": 25.0, "glucides": 2.0, "lipides": 27.0},
-    {"name": "huile d’olive", "calories": 884, "proteines": 0.0, "glucides": 0.0, "lipides": 100.0},
-    {"name": "banane", "calories": 89, "proteines": 1.1, "glucides": 23.0, "lipides": 0.3},
-    {"name": "pomme", "calories": 52, "proteines": 0.3, "glucides": 14.0, "lipides": 0.2},
-    {"name": "avoine", "calories": 389, "proteines": 16.9, "glucides": 66.0, "lipides": 6.9},
-    {"name": "graines de chia", "calories": 486, "proteines": 16.5, "glucides": 42.0, "lipides": 30.7},
-    {"name": "graines de lin", "calories": 534, "proteines": 18.3, "glucides": 28.9, "lipides": 42.2},
+    {
+        "name": "huile d’olive",
+        "calories": 884,
+        "proteines": 0.0,
+        "glucides": 0.0,
+        "lipides": 100.0,
+        "unit_conversions": {"cuillère à soupe": 13.5},
+    },
+    {
+        "name": "banane",
+        "calories": 89,
+        "proteines": 1.1,
+        "glucides": 23.0,
+        "lipides": 0.3,
+        "unit_conversions": {"pièce": 120},
+    },
+    {
+        "name": "pomme",
+        "calories": 52,
+        "proteines": 0.3,
+        "glucides": 14.0,
+        "lipides": 0.2,
+        "unit_conversions": {"pièce": 150},
+    },
+    {
+        "name": "avoine",
+        "calories": 389,
+        "proteines": 16.9,
+        "glucides": 66.0,
+        "lipides": 6.9,
+        "unit_conversions": {"cuillère à soupe": 10},
+    },
+    {
+        "name": "graines de chia",
+        "calories": 486,
+        "proteines": 16.5,
+        "glucides": 42.0,
+        "lipides": 30.7,
+        "unit_conversions": {"cuillère à soupe": 12},
+    },
+    {
+        "name": "graines de lin",
+        "calories": 534,
+        "proteines": 18.3,
+        "glucides": 28.9,
+        "lipides": 42.2,
+        "unit_conversions": {"cuillère à soupe": 10},
+    },
 ]
 
 
@@ -90,11 +174,28 @@ def save_foods(foods: List[Dict]) -> None:
     FOODS_FILE.write_text(json.dumps(foods, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def quantity_to_grams(quantity: float, unit: str) -> Optional[float]:
-    if unit == "g":
+def canonical_unit(unit: object) -> str:
+    normalized = normalize_text(unit).lower()
+    return UNIT_ALIASES.get(normalized, normalized)
+
+
+def quantity_to_grams(quantity: float, unit: str, food: Optional[Dict] = None) -> Optional[float]:
+    base_unit = canonical_unit(unit)
+    if base_unit == "g":
         return quantity
-    if unit == "kg":
+    if base_unit == "kg":
         return quantity * 1000
+    if not food:
+        return None
+
+    conversions = food.get("unit_conversions", {})
+    if not isinstance(conversions, dict):
+        return None
+
+    for conv_unit, grams_per_unit in conversions.items():
+        if canonical_unit(conv_unit) == base_unit:
+            grams = safe_float(grams_per_unit, -1.0)
+            return quantity * grams if grams > 0 else None
     return None
 
 
@@ -134,11 +235,11 @@ def compute_ingredient_macros(ingredient: Dict, foods_map: Dict[str, Dict]) -> D
     auto = bool(ing.get("auto", True))
     quantity = safe_float(ing.get("quantity", 0), 0.0)
     unit = str(ing.get("unit", "g"))
-    grams = quantity_to_grams(quantity, unit)
+    food = foods_map.get(food_name) if food_name else None
+    grams = quantity_to_grams(quantity, unit, food)
 
-    if auto and food_name and grams is not None and food_name in foods_map:
+    if auto and food_name and grams is not None and food:
         factor = grams / 100.0
-        food = foods_map[food_name]
         if not normalize_text(ing.get("name")):
             ing["name"] = food_name
         ing["calories"] = round(safe_float(food.get("calories", 0), 0.0) * factor, 2)
@@ -154,14 +255,20 @@ def validate_ingredient_row(ingredient: Dict, foods_map: Dict[str, Dict], row_in
     display_name = normalize_text(ingredient.get("name"))
     auto = bool(ingredient.get("auto", True))
     unit = str(ingredient.get("unit", "g"))
-    grams = quantity_to_grams(safe_float(ingredient.get("quantity", 0), 0.0), unit)
+    quantity = safe_float(ingredient.get("quantity", 0), 0.0)
+    food = foods_map.get(food_name) if food_name else None
+    grams = quantity_to_grams(quantity, unit, food)
 
     if not food_name and not display_name:
         return f"Ligne {row_index} : renseignez un aliment (base) ou un nom affiché."
+    if quantity <= 0:
+        return None
     if auto and food_name and food_name not in foods_map:
         return f"Ligne {row_index} : l'aliment '{food_name}' est introuvable dans la base."
-    if auto and food_name and unit in ("g", "kg") and grams is None:
-        return f"Ligne {row_index} : unité invalide pour le calcul automatique."
+    if auto and food_name and grams is None:
+        return (
+            f"Ligne {row_index} : Unité non reconnue, utilise g/kg ou ajoute une conversion dans la base d'aliments."
+        )
     return None
 
 
@@ -171,14 +278,15 @@ def sanitize_ingredients(raw_ingredients: List[Dict], foods_map: Dict[str, Dict]
         computed = compute_ingredient_macros(ing, foods_map)
         food_name = normalize_text(computed.get("food"))
         display_name = resolve_ingredient_name(computed)
-        if not display_name:
+        quantity = safe_float(computed.get("quantity", 0), 0.0)
+        if not display_name or quantity <= 0:
             continue
         clean_ingredients.append(
             {
                 "name": display_name,
                 "food": food_name,
                 "auto": bool(computed.get("auto", True)),
-                "quantity": safe_float(computed.get("quantity", 0), 0.0),
+                "quantity": quantity,
                 "unit": str(computed.get("unit", "g")),
                 "calories": safe_float(computed.get("calories", 0), 0.0),
                 "proteines": safe_float(computed.get("proteines", 0), 0.0),
@@ -334,7 +442,10 @@ def main() -> None:
             recipe_name = st.text_input("Nom de la recette", value=default_name)
             portions = st.number_input("Nombre de portions", min_value=1, step=1, value=default_portions)
             st.markdown("### Ingrédients")
-            st.caption("Les aliments de base sont définis pour 100 g. Si `Auto` est activé et l'unité en g/kg, les macros sont calculées automatiquement selon la quantité.")
+            st.caption(
+                "Les aliments de base sont définis pour 100 g. Si `Auto` est activé, "
+                "le calcul utilise g/kg ou les conversions définies dans la base d'aliments."
+            )
             ingredients = st.data_editor(
                 default_ingredients if default_ingredients else [default_ingredient_row()],
                 num_rows="dynamic",
@@ -372,6 +483,9 @@ def main() -> None:
                     st.stop()
 
                 clean_ingredients = sanitize_ingredients(ingredients, foods_map)
+                if not clean_ingredients:
+                    st.error("Aucun ingrédient valide à sauvegarder (lignes vides ou quantité 0 supprimées).")
+                    st.stop()
                 recipe_obj = {
                     "name": recipe_name.strip(),
                     "portions": int(portions),
@@ -389,6 +503,10 @@ def main() -> None:
         st.divider()
         st.subheader("Base d'aliments (valeurs pour 100 g)")
         with st.form("foods_form"):
+            st.caption(
+                "Optionnel : ajoute `unit_conversions` au format JSON, ex: "
+                '{"pièce": 120, "cuillère à soupe": 10}'
+            )
             edited_foods = st.data_editor(
                 foods if foods else DEFAULT_FOODS,
                 num_rows="dynamic",
@@ -399,6 +517,7 @@ def main() -> None:
                     "proteines": st.column_config.NumberColumn("Protéines", min_value=0.0, step=0.1),
                     "glucides": st.column_config.NumberColumn("Glucides", min_value=0.0, step=0.1),
                     "lipides": st.column_config.NumberColumn("Lipides", min_value=0.0, step=0.1),
+                    "unit_conversions": st.column_config.TextColumn("Conversions unités (JSON)"),
                 },
             )
             save_foods_clicked = st.form_submit_button("💾 Sauvegarder la base d'aliments")
@@ -414,15 +533,37 @@ def main() -> None:
                     st.error(f"Aliment en double ignoré : {name}")
                     continue
                 seen_names.add(name.lower())
-                clean_foods.append(
-                    {
-                        "name": name,
-                        "calories": float(food.get("calories", 0) or 0),
-                        "proteines": float(food.get("proteines", 0) or 0),
-                        "glucides": float(food.get("glucides", 0) or 0),
-                        "lipides": float(food.get("lipides", 0) or 0),
-                    }
-                )
+                cleaned_food = {
+                    "name": name,
+                    "calories": float(food.get("calories", 0) or 0),
+                    "proteines": float(food.get("proteines", 0) or 0),
+                    "glucides": float(food.get("glucides", 0) or 0),
+                    "lipides": float(food.get("lipides", 0) or 0),
+                }
+                raw_conversions = food.get("unit_conversions")
+                parsed_conversions = None
+                if isinstance(raw_conversions, dict):
+                    parsed_conversions = raw_conversions
+                elif isinstance(raw_conversions, str) and raw_conversions.strip():
+                    try:
+                        loaded = json.loads(raw_conversions)
+                        if isinstance(loaded, dict):
+                            parsed_conversions = loaded
+                        else:
+                            st.warning(f"Conversions ignorées pour {name} : format JSON invalide.")
+                    except json.JSONDecodeError:
+                        st.warning(f"Conversions ignorées pour {name} : JSON invalide.")
+
+                if parsed_conversions:
+                    clean_map = {}
+                    for unit_name, grams in parsed_conversions.items():
+                        unit_key = normalize_text(unit_name)
+                        grams_value = safe_float(grams, -1.0)
+                        if unit_key and grams_value > 0:
+                            clean_map[unit_key] = grams_value
+                    if clean_map:
+                        cleaned_food["unit_conversions"] = clean_map
+                clean_foods.append(cleaned_food)
             save_foods(clean_foods)
             st.success("Base d'aliments sauvegardée.")
             st.rerun()
